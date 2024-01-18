@@ -14,7 +14,7 @@ import torch
 from numpy.random import randint
 
 
-def patch_rand_drop(args, x, x_rep=None, max_drop=0.3, max_block_sz=0.25, tolr=0.05):
+def patch_rand_drop(args, x, x_rep=None, max_drop=0.2, max_block_sz=0.25, tolr=0.05):
     c, h, w, z = x.size()
     n_drop_pix = np.random.uniform(0, max_drop) * h * w * z
     mx_blk_height = int(h * max_block_sz)
