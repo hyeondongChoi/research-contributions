@@ -70,7 +70,9 @@ def main():
             optimizer.zero_grad()
             if args.distributed:
                 if dist.get_rank() == 0:
-                    print("Step:{}/{}, Loss:{:.4f}, Time:{:.4f}".format(global_step, args.num_steps, loss, time() - t1))
+                    print("Epochs:[{}], Step:{}/{}, Loss:{:.4f}, Time:{:.4f}".format(global_step//args.train_samples_num, global_step, args.num_steps, loss, time() - t1))
+                    with open('/data/hdchoi00/research-contributions/SwinUNETR/Pretrain/log.txt', 'a') as log_file:
+                        log_file.write("Epochs:[{}], Step:{}/{}, Loss:{:.4f}, Time:{:.4f}\n".format(global_step//args.train_samples_num, global_step, args.num_steps, loss, time() - t1))
             else:
                 print("Step:{}/{}, Loss:{:.4f}, Time:{:.4f}".format(global_step, args.num_steps, loss, time() - t1))
 
@@ -89,7 +91,7 @@ def main():
                 writer.add_image("Validation/x1_gt", img_list[0], global_step, dataformats="HW")
                 writer.add_image("Validation/x1_aug", img_list[1], global_step, dataformats="HW")
                 writer.add_image("Validation/x1_recon", img_list[2], global_step, dataformats="HW")
-
+                """
                 if val_loss_recon < val_best:
                     val_best = val_loss_recon
                     checkpoint = {
@@ -109,6 +111,29 @@ def main():
                             val_best, val_loss_recon
                         )
                     )
+                """
+                if val_loss < val_best:
+                    val_best = val_loss
+                    checkpoint = {
+                        "global_step": global_step,
+                        "state_dict": model.state_dict(),
+                        "optimizer": optimizer.state_dict(),
+                    }
+                    save_ckp(checkpoint, logdir + "/model_bestVal.pt")
+                    print(
+                        "Model was saved ! Best Total Loss. Val Total Loss: {:.4f}, Val Recon Loss: {:.4f}".format(
+                            val_best, val_loss_recon
+                        ))
+                    with open('/data/hdchoi00/research-contributions/SwinUNETR/Pretrain/log.txt', 'a') as log_file:
+                        log_file.write("Model was saved ! Best Total Loss. Val Total Loss: {:.4f}, Val Recon Loss: {:.4f}\n".format(val_best, val_loss_recon))
+                else:
+                    print(
+                        "Model was not saved ! Best Total Loss. Val Total Loss: {:.4f} Val Recon Loss: {:.4f}".format(
+                            val_best, val_loss_recon
+                        ))
+                    with open('/data/hdchoi00/research-contributions/SwinUNETR/Pretrain/log.txt', 'a') as log_file:
+                        log_file.write("Model was not saved ! Best Total Loss. Val Total Loss: {:.4f} Val Recon Loss: {:.4f}\n".format(val_best, val_loss_recon))
+        
         return global_step, loss, val_best
 
     def validation(args, test_loader):
@@ -146,13 +171,17 @@ def main():
                 recon = rec_x1[0][0][:, :, 48] * 255.0
                 recon = recon.astype(np.uint8)
                 img_list = [xgt, x_aug, recon]
-                print("Validation step:{}, Loss:{:.4f}, Loss Reconstruction:{:.4f}".format(step, loss, loss_recon))
+                print("Validation step:{}, Loss:{:.4f}, Loss Reconstruction:{:.4f}".format(step, loss, loss_recon)) # step, np.mean(loss_val), np.mean(loss_val_recon)
+                
+                with open('/data/hdchoi00/research-contributions/SwinUNETR/Pretrain/log.txt', 'a') as log_file:
+                    log_file.write("Validation step:{}, Loss:{:.4f}, Loss Reconstruction:{:.4f}\n".format(step, loss, loss_recon))
 
         return np.mean(loss_val), np.mean(loss_val_recon), img_list
 
     parser = argparse.ArgumentParser(description="PyTorch Training")
     parser.add_argument("--logdir", default="test", type=str, help="directory to save the tensorboard logs")
-    parser.add_argument("--epochs", default=100, type=int, help="number of training epochs")
+    parser.add_argument("--train_samples_num", default=579, type=int, help="number of training samples")
+    parser.add_argument("--epochs", default=500, type=int, help="number of training epochs")
     parser.add_argument("--num_steps", default=100000, type=int, help="number of training iterations")
     parser.add_argument("--eval_num", default=100, type=int, help="evaluation frequency")
     parser.add_argument("--warmup_steps", default=500, type=int, help="warmup steps")
@@ -172,7 +201,7 @@ def main():
     parser.add_argument("--roi_y", default=96, type=int, help="roi size in y direction")
     parser.add_argument("--roi_z", default=96, type=int, help="roi size in z direction")
     parser.add_argument("--batch_size", default=2, type=int, help="number of batch size")
-    parser.add_argument("--sw_batch_size", default=2, type=int, help="number of sliding window batch size")
+    parser.add_argument("--sw_batch_size", default=1, type=int, help="number of sliding window batch size")
     parser.add_argument("--lr", default=4e-4, type=float, help="learning rate")
     parser.add_argument("--decay", default=0.1, type=float, help="decay rate")
     parser.add_argument("--momentum", default=0.9, type=float, help="momentum")

@@ -20,21 +20,20 @@ from monai.transforms import (
     Orientationd,
     RandCropByPosNegLabeld,
     RandSpatialCropSamplesd,
+    Resized,
     ScaleIntensityRanged,
     Spacingd,
     SpatialPadd,
     ToTensord,
 )
 
-
 def get_loader(args):
-    json_dir = "/data/hdchoi00/Swin-UNETR/research-contributions/SwinUNETR/Pretrain/jsons/MRI_DATA.json"
-    data_dir = "/data/hdchoi00/Swin-UNETR/research-contributions/SwinUNETR/Pretrain/MRI_DATA"
+    json_dir = "/data/hdchoi00/research-contributions/SwinUNETR/Pretrain/jsons/CT_DATA.json"
+    data_dir = "/data/hdchoi00/research-contributions/SwinUNETR/Pretrain/DATA/CT_DATA"
     num_workers = 4
 
     datalist = load_decathlon_datalist(json_dir, False, "training", base_dir=data_dir)
-    print("MRI Dataset: number of data: {}".format(len(datalist)))
-
+    
     new_datalist = []
     for item in datalist:
         item_dict = {"image": item["image"]}
@@ -42,9 +41,11 @@ def get_loader(args):
 
     vallist = load_decathlon_datalist(json_dir, False, "validation", base_dir=data_dir)
 
-    print("Dataset all training: number of data: {}".format(len(datalist) - len(vallist)))
+    print("Dataset: number of data: {}".format(len(datalist) + len(vallist)))
+    print("Dataset all training: number of data: {}".format(len(datalist)))
     print("Dataset all validation: number of data: {}".format(len(vallist)))
 
+    """
     train_transforms = Compose(
         [
             LoadImaged(keys=["image"]),
@@ -53,7 +54,48 @@ def get_loader(args):
             ScaleIntensityRanged(
                 keys=["image"], a_min=args.a_min, a_max=args.a_max, b_min=args.b_min, b_max=args.b_max, clip=True
             ),
-            Resized(keys=["image"], spatial_size=(args.roi_x, args.roi_y, args.roi_z))
+            SpatialPadd(keys="image", spatial_size=[args.roi_x, args.roi_y, args.roi_z]),
+            CropForegroundd(keys=["image"], source_key="image", k_divisible=[args.roi_x, args.roi_y, args.roi_z]),
+            RandSpatialCropSamplesd(
+                keys=["image"],
+                roi_size=[args.roi_x, args.roi_y, args.roi_z],
+                num_samples=args.sw_batch_size,
+                random_center=True,
+                random_size=False,
+            ),
+            ToTensord(keys=["image"]),
+        ]
+    )
+    val_transforms = Compose(
+        [
+            LoadImaged(keys=["image"]),
+            AddChanneld(keys=["image"]),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            ScaleIntensityRanged(
+                keys=["image"], a_min=args.a_min, a_max=args.a_max, b_min=args.b_min, b_max=args.b_max, clip=True
+            ),
+            SpatialPadd(keys="image", spatial_size=[args.roi_x, args.roi_y, args.roi_z]),
+            CropForegroundd(keys=["image"], source_key="image", k_divisible=[args.roi_x, args.roi_y, args.roi_z]),
+            RandSpatialCropSamplesd(
+                keys=["image"],
+                roi_size=[args.roi_x, args.roi_y, args.roi_z],
+                num_samples=args.sw_batch_size,
+                random_center=True,
+                random_size=False,
+            ),
+            ToTensord(keys=["image"]),
+        ]
+    )
+    """
+    train_transforms = Compose(
+        [
+            LoadImaged(keys=["image"]),
+            AddChanneld(keys=["image"]),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            ScaleIntensityRanged(
+                keys=["image"], a_min=args.a_min, a_max=args.a_max, b_min=args.b_min, b_max=args.b_max, clip=True
+            ),
+            Resized(keys=["image"], spatial_size=(args.roi_x, args.roi_y, args.roi_z)),
             CropForegroundd(keys=["image"], source_key="image", k_divisible=[args.roi_x, args.roi_y, args.roi_z]),
             ToTensord(keys=["image"]),
         ]
@@ -66,11 +108,12 @@ def get_loader(args):
             ScaleIntensityRanged(
                 keys=["image"], a_min=args.a_min, a_max=args.a_max, b_min=args.b_min, b_max=args.b_max, clip=True
             ),
-            Resized(keys=["image"], spatial_size=(args.roi_x, args.roi_y, args.roi_z))
+            Resized(keys=["image"], spatial_size=(args.roi_x, args.roi_y, args.roi_z)),
             CropForegroundd(keys=["image"], source_key="image", k_divisible=[args.roi_x, args.roi_y, args.roi_z]),
             ToTensord(keys=["image"]),
         ]
     )
+
 
     if args.cache_dataset:
         print("Using MONAI Cache Dataset")
