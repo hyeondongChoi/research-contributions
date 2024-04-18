@@ -72,7 +72,7 @@ def main():
                 if dist.get_rank() == 0:
                     print("Epochs:[{}], Step:{}/{}, Loss:{:.4f}, Time:{:.4f}".format(global_step//args.train_samples_num, global_step, args.num_steps, loss, time() - t1))
                     with open('/data/hdchoi00/research-contributions/SwinUNETR/Pretrain/log.txt', 'a') as log_file:
-                        log_file.write("Epochs:[{}], Step:{}/{}, Loss:{:.4f}, Time:{:.4f}\n".format(global_step//args.train_samples_num, global_step, args.num_steps, loss, time() - t1))
+                        log_file.write("Epochs:[{}], Step:{}/{}, Loss:{:.4f}, Time:{:.4f}\n".format(global_step//args.train_samples_num, global_step, args.num_steps, np.mean(loss), time() - t1))
             else:
                 print("Step:{}/{}, Loss:{:.4f}, Time:{:.4f}".format(global_step, args.num_steps, loss, time() - t1))
 
@@ -84,6 +84,7 @@ def main():
 
             if val_cond:
                 val_loss, val_loss_recon, img_list = validation(args, test_loader)
+                writer.add_scalar("validation/loss_total", scalar_value=val_loss, global_step=global_step)
                 writer.add_scalar("Validation/loss_recon", scalar_value=val_loss_recon, global_step=global_step)
                 writer.add_scalar("train/loss_total", scalar_value=np.mean(loss_train), global_step=global_step)
                 writer.add_scalar("train/loss_recon", scalar_value=np.mean(loss_train_recon), global_step=global_step)
@@ -171,10 +172,10 @@ def main():
                 recon = rec_x1[0][0][:, :, 48] * 255.0
                 recon = recon.astype(np.uint8)
                 img_list = [xgt, x_aug, recon]
-                print("Validation step:{}, Loss:{:.4f}, Loss Reconstruction:{:.4f}".format(step, loss, loss_recon)) # step, np.mean(loss_val), np.mean(loss_val_recon)
+                print("Validation step:{}, Loss:{:.4f}, Loss Reconstruction:{:.4f}".format(step, np.mean(loss), loss_recon)) # step, np.mean(loss_val), np.mean(loss_val_recon)
                 
                 with open('/data/hdchoi00/research-contributions/SwinUNETR/Pretrain/log.txt', 'a') as log_file:
-                    log_file.write("Validation step:{}, Loss:{:.4f}, Loss Reconstruction:{:.4f}\n".format(step, loss, loss_recon))
+                    log_file.write("Validation step:{}, Loss:{:.4f}, Loss Reconstruction:{:.4f}\n".format(step, np.mean(loss), loss_recon))
 
         return np.mean(loss_val), np.mean(loss_val_recon), img_list
 
